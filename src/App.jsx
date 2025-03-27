@@ -13,11 +13,13 @@ function App() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [signature, setSignature] = useState('');
+  const [error, setError] = useState('');
 
   const onClick = async (event) => {
     event.preventDefault();
     setLoading(true);
     setSignature('');
+    setError('');
 
     try {
       const wallet = Keypair.fromSecretKey(
@@ -49,13 +51,12 @@ function App() {
 
       txn.partialSign(wallet);
 
-      const sig = await connection.sendRawTransaction(txn.serialize(), {
-        skipPreflight: true,
-      });
+      const sig = await connection.sendRawTransaction(txn.serialize());
 
       setSignature(sig);
     } catch (error) {
       console.error('Transaction failed:', error);
+      setError(error.message || 'An unknown error occurred');
     } finally {
       setLoading(false);
     }
@@ -93,13 +94,22 @@ function App() {
         </form>
         {signature && (
           <p className='signature'>
-            <strong>Signature:</strong> {signature}
+            <strong>Signature:</strong>{' '}
+            <a
+              href={`https://explorer.solana.com/tx/${signature}?cluster=custom&customUrl=https%3A%2F%2Frpc.lazorkit.xyz`}
+              target='_blank'
+              rel='noopener noreferrer'
+            >
+              {signature}
+            </a>
+          </p>
+        )}
+        {error && (
+          <p className='error'>
+            <strong>Error:</strong> {error}
           </p>
         )}
       </div>
-      <p className='read-the-docs'>
-        Click on the Vite and React logos to learn more
-      </p>
     </>
   );
 }

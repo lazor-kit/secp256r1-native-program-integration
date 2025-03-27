@@ -105,3 +105,14 @@ form input[type='text']:focus {
   font-size: 1rem;
   word-break: break-word;
 }
+
+.error {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #fff1f0;
+  border: 1px solid #ffa39e;
+  border-radius: 4px;
+  color: #cf1322;
+  font-size: 1rem;
+  word-break: break-word;
+}
