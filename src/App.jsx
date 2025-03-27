@@ -10,46 +10,55 @@ import { Connection, Keypair, Transaction } from '@solana/web3.js';
 import bs58 from 'bs58';
 
 function App() {
-  const [message, setMessage] = useState('asdasd');
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [signature, setSignature] = useState('');
 
   const onClick = async (event) => {
     event.preventDefault();
+    setLoading(true);
+    setSignature('');
 
-    const wallet = Keypair.fromSecretKey(
-      bs58.decode(import.meta.env.VITE_PRIVATE_KEY)
-    );
+    try {
+      const wallet = Keypair.fromSecretKey(
+        bs58.decode(import.meta.env.VITE_PRIVATE_KEY)
+      );
 
-    const privateKey = await ECDSA.generateKey();
+      const privateKey = await ECDSA.generateKey();
 
-    const publicKeyBase64 = await privateKey.toCompressedPublicKey();
+      const publicKeyBase64 = await privateKey.toCompressedPublicKey();
 
-    const signatureBase64 = await privateKey.sign(message);
+      const signatureBase64 = await privateKey.sign(message);
 
-    console.log(message);
+      const txn = new Transaction().add(
+        createSecp256r1Instruction(
+          Buffer.from(message),
+          publicKeyBase64,
+          Buffer.from(signatureBase64, 'base64')
+        )
+      );
 
-    const txn = new Transaction().add(
-      createSecp256r1Instruction(
-        Buffer.from(message),
-        publicKeyBase64,
-        Buffer.from(signatureBase64, 'base64')
-      )
-    );
+      const connection = new Connection(
+        import.meta.env.VITE_RPC_URL,
+        'confirmed'
+      );
 
-    const connection = new Connection(
-      'https://api.devnet.solana.com',
-      'confirmed'
-    );
+      txn.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
 
-    txn.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+      txn.feePayer = wallet.publicKey;
 
-    txn.feePayer = wallet.publicKey;
+      txn.partialSign(wallet);
 
-    txn.partialSign(wallet);
+      const sig = await connection.sendRawTransaction(txn.serialize(), {
+        skipPreflight: true,
+      });
 
-    const sig = await connection.sendRawTransaction(txn.serialize(), {
-      skipPreflight: true,
-    });
-    console.log(sig);
+      setSignature(sig);
+    } catch (error) {
+      console.error('Transaction failed:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -62,7 +71,7 @@ function App() {
           <img src={reactLogo} className='logo react' alt='React logo' />
         </a>
       </div>
-      <h1>Vite + React</h1>
+      <h1>Secp256r1 Native Program Integrate</h1>
       <div className='card'>
         <form>
           <label>
@@ -71,11 +80,22 @@ function App() {
               type='text'
               name='message'
               value={message}
-              onChange={(value) => setMessage(value.value)}
+              placeholder='Enter a message'
+              onChange={(e) => setMessage(e.target.value)}
             />
           </label>
-          <input type='submit' value='Submit' onClick={onClick} />
+          <input
+            type='submit'
+            value={loading ? 'Loading...' : 'Submit'}
+            onClick={onClick}
+            disabled={loading}
+          />
         </form>
+        {signature && (
+          <p className='signature'>
+            <strong>Signature:</strong> {signature}
+          </p>
+        )}
       </div>
       <p className='read-the-docs'>
         Click on the Vite and React logos to learn more
